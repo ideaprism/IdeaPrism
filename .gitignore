@@ -8,3 +8,6 @@ __pycache__/
 node_modules/
 .DS_Store
 Thumbs.db
+
+# 별도 git 저장소(ideaprism_sdg2 클론) — 중첩 커밋 방지
+ideaprism_revise/
