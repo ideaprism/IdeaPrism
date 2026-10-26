@@ -1,0 +1,10 @@
+# 원본 데이터 (집 PC에만) — 폴더 유지용 .gitkeep만 추적
+dev/data/raw/*
+!dev/data/raw/.gitkeep
+
+.env
+*.env
+__pycache__/
+node_modules/
+.DS_Store
+Thumbs.db
