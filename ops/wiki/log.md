@@ -13,3 +13,4 @@
 2026-10-27 [회사] 보안: 비공개 테이블 잠금 마이그레이션을 사용자가 Supabase SQL Editor에서 실행. 재점검 결과 access_codes·partner_organizations·partnership_inquiries·bot_settings 익명 접근 401 차단, 공개 테이블 정상, 프로덕션 홈·검색 정상
 2026-10-27 [회사] 개발: 응답 슬림화(2-4) 완료. 검색 응답 약 75% 감소(자전거 431→100KB, 비오는날 850→176KB), 상세는 모달에서 /api/inventions/[id] 단건 조회, DB 첫 조회 시간초과 1회 자동 재시도. 브라우저에서 모달 기본·상세 탭 정상 확인. 다음: 운영자 정보·Footer 연락처, main 반영 방식 결정
 2026-10-27 [회사] 개발: 운영자 정보 반영(1인 창업, 아이디어프리즘 대표 정창균). 방침·약관 보호책임자·연락처, Footer 'Steve Changs' 문구 교체 및 하단 운영자 줄 추가. 로컬 화면 확인. 다음: main 반영 방식 결정, Vercel Analytics 활성화
+2026-10-27 [회사] 개발: 로컬 테스트 피드백 4건 반영(검색 메뉴→검색창 강조, 필터 그룹별 '전체' 숫자 연동·다중값 안내, 모달 이미지 최대 400×300, '(대표)' 표기 삭제). 새 비공개 저장소 ideaprism/ideaprism_revise main에 전체 이력 push(10a19f0). 주의: 과거 이력에 service_role 키 포함 → Supabase 키 교체 권장. 다음: Vercel에서 새 프로젝트 Import·환경변수 4개 입력(사용자), 확인 후 ideaprism.or.kr 도메인 이전
