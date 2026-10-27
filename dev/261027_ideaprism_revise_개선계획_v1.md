@@ -317,7 +317,7 @@
 | partnership_inquiries | 차단 (0행) |
 | search_attempt_logs | 테이블 없음 (마이그레이션 미적용) |
 
-→ `supabase/migrations/20261027120000_lock_private_tables.sql` 작성. **Supabase SQL Editor에서 직접 실행 필요 (프로덕션 DB 변경)**. 실행 후 `node --use-system-ca scripts/rls-anon-check.mjs`로 차단 확인
+→ `supabase/migrations/20261027120000_lock_private_tables.sql` 작성, **2026-10-27 사용자가 SQL Editor에서 실행 완료**. 재점검 결과 비공개 4개 테이블 익명 접근 HTTP 401 차단, 공개 6개는 정상 읽기. 프로덕션 홈·검색 정상(우산 첫 요청 504는 기존 콜드스타트)
 
 ### 9-5. 로컬 실행 메모
 
