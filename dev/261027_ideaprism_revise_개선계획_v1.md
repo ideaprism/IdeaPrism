@@ -244,7 +244,7 @@
 | Phase | 브랜치 | 상태 | 남은 확인 |
 |---|---|---|---|
 | 0 | chore/phase0-tooling | 완료 (원격 PR 있음) | — |
-| 1 | feat/phase1-meta-legal | 완료 (원격 PR 있음) | site.ts 운영자 정보 입력, Vercel Analytics 활성화 |
+| 1 | feat/phase1-meta-legal | 완료. 운영자 정보 반영(로컬 커밋, 원격 PR보다 앞섬) | Vercel Analytics 활성화 |
 | 2 | fix/phase2-search-relevance | 코드·단위테스트 완료 (원격 PR 있음) | 실제 DB 회귀 테스트 (키 필요) |
 | 2-4 | perf/phase2-slim-response | 완료 (로컬만, local/integration 기반이라 단독 머지 불가) | — |
 | 3 | fix/phase3-kipris-query | 코드·단위테스트 완료 (로컬만) | `scripts/kipris-probe.mjs` 실측 → `KIPRIS_WORD_OPERATORS` 결정 |
