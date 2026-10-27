@@ -246,7 +246,7 @@
 | 0 | chore/phase0-tooling | 완료 (원격 PR 있음) | — |
 | 1 | feat/phase1-meta-legal | 완료 (원격 PR 있음) | site.ts 운영자 정보 입력, Vercel Analytics 활성화 |
 | 2 | fix/phase2-search-relevance | 코드·단위테스트 완료 (원격 PR 있음) | 실제 DB 회귀 테스트 (키 필요) |
-| 2-4 | — | 보류 | 응답 슬림화, DB 확인 가능할 때 |
+| 2-4 | perf/phase2-slim-response | 완료 (로컬만, local/integration 기반이라 단독 머지 불가) | — |
 | 3 | fix/phase3-kipris-query | 코드·단위테스트 완료 (로컬만) | `scripts/kipris-probe.mjs` 실측 → `KIPRIS_WORD_OPERATORS` 결정 |
 | 4 | fix/phase4-security | 점검 도구 완료 (로컬만) | `supabase/audit/rls_check.sql` 실행 결과 → 정책 수정 마이그레이션 |
 | 5 | feat/phase5-hide-chat | 완료 (로컬만). 5-A 숨김, `CHAT_ENABLED=true`로 다시 켬 | — |
@@ -323,3 +323,17 @@
 
 - 회사망 인증서 때문에 서버는 `NODE_OPTIONS=--use-system-ca`로 실행해야 DB·KIPRIS에 연결됨
 - 통합 브랜치 local/integration: 테스트 26건, 빌드 통과
+
+### 9-6. 응답 슬림화 (2-4) 결과
+
+| 키워드 | 이전 | 이후 |
+|---|---|---|
+| 자전거 | 431KB | 100KB |
+| 우산 | 331KB | 76KB |
+| 의자 | 414KB | 94KB |
+| 비 오는 날 교실 바닥 | 850KB | 176KB |
+| 소화기 | 85KB | 20KB |
+
+- 상세 본문은 모달을 열 때 `/api/inventions/[id]`로 단건 조회 (약 1.3KB, 0.2초)
+- 관련도 점수는 서버에서 계산하므로 정렬 결과 동일
+- 쉬던 DB 첫 조회 시간초과(57014)는 서버 1회 자동 재시도로 대응. 근본 해결은 DB 성능(인덱스·statement_timeout) 검토 필요. 2글자 한국어 검색어는 pg_trgm 인덱스 효과가 없어 별도 설계 필요

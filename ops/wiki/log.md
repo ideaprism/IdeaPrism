@@ -11,3 +11,4 @@
 2026-10-27 [회사] 개발: 챗봇 5-A 결정 반영. feat/phase5-hide-chat — 챗봇 화면·/api/chat 기본 꺼짐(CHAT_ENABLED=true로 켬), local/integration 병합, 테스트 22건·빌드 통과, 로컬에서 버튼 미표시·API 404 확인. 다음: .env.local 키 입력 후 실측 3종
 2026-10-27 [회사] 실측: .env.local 키로 로컬 확인. 검색 회귀 상위5 관련도 개선(우산 2→5, 자전거 1→5, 의자 2→5, 분리수거 3→5, 비오는날 0건→4/5, 급식잔반 0건→2/5 DB한계). 동의어 묶음·'비 오는'→빗물·하나만 빠진 조합 조회 추가. KIPRIS가 *·+·IPC=[ ] 해석함을 실측 → 검색식 그대로 전송 기본화, Expert 0건→28건. RLS 점검 결과 access_codes·partner_organizations·bot_settings 익명 읽기 가능 → 잠금 마이그레이션 작성(SQL Editor 실행 필요). 다음: 마이그레이션 실행, 응답 슬림화, 운영자 정보
 2026-10-27 [회사] 보안: 비공개 테이블 잠금 마이그레이션을 사용자가 Supabase SQL Editor에서 실행. 재점검 결과 access_codes·partner_organizations·partnership_inquiries·bot_settings 익명 접근 401 차단, 공개 테이블 정상, 프로덕션 홈·검색 정상
+2026-10-27 [회사] 개발: 응답 슬림화(2-4) 완료. 검색 응답 약 75% 감소(자전거 431→100KB, 비오는날 850→176KB), 상세는 모달에서 /api/inventions/[id] 단건 조회, DB 첫 조회 시간초과 1회 자동 재시도. 브라우저에서 모달 기본·상세 탭 정상 확인. 다음: 운영자 정보·Footer 연락처, main 반영 방식 결정
