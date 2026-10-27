@@ -234,3 +234,31 @@
 - DB 변경은 `supabase/migrations/`로만. 프로덕션 SQL 직접 실행은 **읽기 전용 점검(4-1)만** 허용
 - 비개발자 보고: 실행 전 한 줄 설명, 삭제·대량 변경은 사전 확인
 - 키·연락처는 코드·md에 쓰지 않음 (`.env.local`만)
+
+---
+
+## 8. 진행 현황 (2026-10-27 갱신)
+
+작업 방식 변경: **로컬에서만 작업·검증**하고, 완료 후 ideaprism.or.kr(main)에 반영. ideaprism_sdg2 새 브랜치는 푸시하지 않음(푸시하면 Vercel 미리보기가 생김). 로컬 통합 확인은 `local/integration` 브랜치(Phase 0~4 병합).
+
+| Phase | 브랜치 | 상태 | 남은 확인 |
+|---|---|---|---|
+| 0 | chore/phase0-tooling | 완료 (원격 PR 있음) | — |
+| 1 | feat/phase1-meta-legal | 완료 (원격 PR 있음) | site.ts 운영자 정보 입력, Vercel Analytics 활성화 |
+| 2 | fix/phase2-search-relevance | 코드·단위테스트 완료 (원격 PR 있음) | 실제 DB 회귀 테스트 (키 필요) |
+| 2-4 | — | 보류 | 응답 슬림화, DB 확인 가능할 때 |
+| 3 | fix/phase3-kipris-query | 코드·단위테스트 완료 (로컬만) | `scripts/kipris-probe.mjs` 실측 → `KIPRIS_WORD_OPERATORS` 결정 |
+| 4 | fix/phase4-security | 점검 도구 완료 (로컬만) | `supabase/audit/rls_check.sql` 실행 결과 → 정책 수정 마이그레이션 |
+| 5 | — | 대기 | 챗봇 숨김/정비 결정(D2) |
+
+검증 수치 (local/integration): 단위 테스트 22건 통과, tsc 0건, next build 통과, ESLint 에러 103 / 경고 62 (기존분).
+
+추가로 확인한 사실
+- 검색 2단어 이상 0건의 진짜 원인: 파서가 "모든 컬럼이 모든 단어 포함"을 요구하던 버그 (수정됨)
+- 프로덕션 기준선: '우산' 첫 요청 504, 재시도 시 1위 훌라후프. 응답 85~430KB, 2.4~5.5초
+- `/api/admin/*`는 이미 라우트 내부 재검증 중, `verify-code`는 비활성 → 계획 4-3·4-4는 해결된 상태
+
+키가 들어오면 바로 할 일 (`.env.local`)
+1. `node --use-system-ca scripts/regression-search.mjs` (로컬 서버 실행 후) → 상위5 재채점
+2. `node --use-system-ca scripts/kipris-probe.mjs` → 연산자 지원 여부
+3. `node --use-system-ca scripts/rls-anon-check.mjs` + SQL Editor에서 `rls_check.sql`
