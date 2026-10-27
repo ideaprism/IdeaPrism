@@ -249,7 +249,7 @@
 | 2-4 | — | 보류 | 응답 슬림화, DB 확인 가능할 때 |
 | 3 | fix/phase3-kipris-query | 코드·단위테스트 완료 (로컬만) | `scripts/kipris-probe.mjs` 실측 → `KIPRIS_WORD_OPERATORS` 결정 |
 | 4 | fix/phase4-security | 점검 도구 완료 (로컬만) | `supabase/audit/rls_check.sql` 실행 결과 → 정책 수정 마이그레이션 |
-| 5 | — | 대기 | 챗봇 숨김/정비 결정(D2) |
+| 5 | feat/phase5-hide-chat | 완료 (로컬만). 5-A 숨김, `CHAT_ENABLED=true`로 다시 켬 | — |
 
 검증 수치 (local/integration): 단위 테스트 22건 통과, tsc 0건, next build 통과, ESLint 에러 103 / 경고 62 (기존분).
 
