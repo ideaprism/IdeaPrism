@@ -1,0 +1,64 @@
+{
+  "leaders": [
+    {
+      "id": "plan",
+      "name": "캡틴",
+      "role": "총괄 리더",
+      "team": "plan-ops",
+      "teamLabel": "기획/운영",
+      "folder": "teams/plan-ops",
+      "agentFile": "teams/plan-ops/.claude/agents/leader.md",
+      "inbox": "handoff/plan-ops",
+      "extraDirs": [
+        "wiki",
+        "handoff",
+        "board",
+        "meetings",
+        "ops/wiki"
+      ],
+      "color": "#3E63DD",
+      "model": "sonnet",
+      "character": "captain"
+    },
+    {
+      "id": "mkt",
+      "name": "해시",
+      "role": "홍보 팀장",
+      "team": "marketing",
+      "teamLabel": "마케팅",
+      "folder": "teams/marketing",
+      "agentFile": "teams/marketing/.claude/agents/leader.md",
+      "inbox": "handoff/marketing",
+      "extraDirs": [
+        "wiki",
+        "handoff",
+        "board",
+        "meetings"
+      ],
+      "color": "#E5663B",
+      "model": "sonnet",
+      "character": "hash"
+    },
+    {
+      "id": "dev",
+      "name": "지노",
+      "role": "기술 수석",
+      "team": "dev",
+      "teamLabel": "개발",
+      "folder": "teams/dev",
+      "agentFile": "teams/dev/.claude/agents/leader.md",
+      "inbox": "handoff/dev",
+      "extraDirs": [
+        "wiki",
+        "handoff",
+        "board",
+        "meetings",
+        "$codeRepo",
+        "IdeaPrism_office"
+      ],
+      "color": "#12A26A",
+      "model": "sonnet",
+      "character": "zino"
+    }
+  ]
+}

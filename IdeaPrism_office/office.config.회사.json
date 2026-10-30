@@ -1,0 +1,11 @@
+{
+  "pc": "회사",
+  "root": "C:/IdeaPrism",
+  "wikiKnowledge": "wiki/knowledge",
+  "wikiRaw": "wiki/raw",
+  "codeRepo": "C:/IdeaPrism/ideaprism_revise",
+  "port": 3000,
+  "deadline": { "label": "사업계획서 제출", "date": "2026-12-01" },
+  "musicDir": "",
+  "libraryVisitSeconds": 4.2
+}
