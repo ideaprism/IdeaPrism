@@ -28,7 +28,7 @@ npm run office -- --pc 회사
 | 영역 | 내용 |
 |---|---|
 | 상단 바 | 연결 상태, D-day, 결재함(M3), 시각, ⚙ 관리자 |
-| 사무실 (2D) | PRD 8.3 구역 평면도. 팀장이 상태에 따라 자리·도서관·탕비실로 이동 (3D 연출은 M4) |
+| 사무실 (3D, M4) | PRD 8.3 공유오피스. 바닥 `rotateX(52deg)` + `perspective 1700px`, 가구는 상자형(윗면·앞면·좌우면), 인물·식물은 빌보드 + 바닥 그림자. 팀장이 상태에 따라 자리·도서관·결재 테이블(도착 순)·탕비실로 1.6초 이동. 대표실: 원형 결재 테이블, 플랜터 칸막이, 대표석(책상·모니터·스피커·턴테이블·플로어 조명·네온·레코드장·라운지 체어), 유리벽(문 개방부). "2D 평면도" 버튼으로 전환 가능(브라우저에 기억) |
 | 팀 상태 카드 | 상태 알약, 현재 업무, 위치·마지막 도구·경과 |
 | 업무 보드 | `board/tasks.json` 의 대기/진행/완료(차단 포함). 서버만 기록: 지시 시 todo → 실행 doing → 결과 done / 오류 blocked, 성공한 Write/Edit 경로를 outputs 에 누적 |
 | 오른쪽 패널 | 상태별 표정 이미지, 대화(사용자·팀장·도구·결과·**결재 카드**), 입력창(Enter 전송, 한글 조합 중 무시), 중단, 새 세션 |
@@ -69,6 +69,12 @@ server/
   tasks.ts         TaskBoard (board/tasks.json)
   local.ts         .local/ 세션·대화 기록·로그
   gitApi.ts        git status / pull
+web/src/components/scene/
+  primitives.tsx   Box(상자)·Flat(바닥면)·Billboard(빌보드)·Wall(유리벽)
+  layout.ts        PRD 8.3 좌표(구역·자리·도서관·회의석·결재석·탕비실·대표석)
+  Furniture.tsx    책상·도서관·회의 테이블·탕비실·대표실 소품
+  Person.tsx       인물(얼굴·팀색 링·캡슐 몸·이름표·상태 점·말풍선)
+  Office3D.tsx     씬 조립, 영역에 맞춰 크기 조절
 scripts/build-assets.mjs   team_avengers 이미지 → assets/*.webp
 assets/manifest.json       상태 → 표정 이미지 키
 ```

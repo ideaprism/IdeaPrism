@@ -78,6 +78,13 @@ select {
   .main {
     grid-template-columns: 1fr;
   }
+  .office,
+  .office3d {
+    min-height: 440px;
+  }
+  .side {
+    min-height: 640px;
+  }
 }
 
 /* ---------- 상단 바 ---------- */
@@ -725,4 +732,396 @@ select {
   gap: 8px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+/* ======================= 3D 사무실 (PRD 8.3) ======================= */
+.office3d {
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(180deg, #eef1f7 0%, #f6f7fb 100%);
+}
+.scene-btns {
+  position: absolute;
+  top: 10px;
+  left: 12px;
+  z-index: 5;
+  display: flex;
+  gap: 6px;
+}
+.scene-btns .btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.stage {
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  transform-origin: 50% 0;
+  perspective: 1700px;
+  perspective-origin: 50% 22%;
+}
+.floor3 {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  transform-origin: 50% 100%;
+  transform: rotateX(52deg);
+  transform-style: preserve-3d;
+}
+.flat {
+  position: absolute;
+}
+.floor-base {
+  background-color: #e4e2dc;
+  background-image: radial-gradient(#cfcbc2 1.2px, transparent 1.3px), radial-gradient(#b8b4ab 1px, transparent 1.1px);
+  background-size: 18px 18px, 27px 27px;
+  background-position: 0 0, 9px 9px;
+  border-radius: 14px;
+  box-shadow: 0 30px 60px rgba(20, 30, 50, 0.25);
+}
+.zone-floor {
+  border-radius: 12px;
+}
+.zone-floor.wood {
+  background: repeating-linear-gradient(90deg, #e7c99f 0 28px, #dcb98c 28px 56px);
+}
+.zone-floor.ceo {
+  background: repeating-linear-gradient(90deg, #c69a68 0 30px, #b88a58 30px 60px);
+}
+.zone-floor.dark {
+  background: #4a4e5a;
+}
+.zone-floor.beige {
+  background: #efe6d6;
+}
+.zone-label {
+  position: absolute;
+  left: 8px;
+  top: 6px;
+  font-size: 11px;
+  color: rgba(40, 40, 50, 0.55);
+  letter-spacing: 0.3px;
+  pointer-events: none;
+}
+.zone-floor.dark .zone-label {
+  color: rgba(255, 255, 255, 0.55);
+}
+.rug {
+  border-radius: 10px;
+  opacity: 0.85;
+}
+.rug.dark-rug {
+  background: #2f3340;
+  opacity: 1;
+}
+
+/* 상자 */
+.b3 {
+  position: absolute;
+  transform-style: preserve-3d;
+}
+.b3 > i {
+  position: absolute;
+  display: block;
+  backface-visibility: visible;
+}
+.b3-top {
+  inset: 0;
+}
+.b3-front {
+  left: 0;
+  top: 100%;
+  width: 100%;
+  transform-origin: top;
+  transform: rotateX(-90deg);
+}
+.b3-left {
+  left: 0;
+  top: 0;
+  height: 100%;
+  transform-origin: left;
+  transform: rotateY(90deg);
+}
+.b3-right {
+  left: 100%;
+  top: 0;
+  height: 100%;
+  transform-origin: left;
+  transform: rotateY(90deg);
+}
+
+/* 빌보드 */
+.bb {
+  position: absolute;
+  transform-style: preserve-3d;
+  transform-origin: 50% 100%;
+  transform: rotateX(-52deg);
+  transition:
+    left 1.6s ease,
+    top 1.6s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bb {
+    transition: none;
+  }
+}
+.bb-shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 0;
+  border-radius: 50%;
+  background: rgba(20, 25, 40, 0.28);
+  filter: blur(2px);
+  transform: translate(-50%, 50%) rotateX(52deg);
+}
+.bb-face {
+  position: absolute;
+  inset: 0;
+}
+
+/* 유리벽 */
+.wall {
+  position: absolute;
+  background: linear-gradient(180deg, rgba(200, 228, 245, 0.35), rgba(170, 205, 230, 0.2));
+  border: 2px solid rgba(110, 150, 185, 0.55);
+  box-sizing: border-box;
+}
+.wall-x {
+  transform-origin: 50% 100%;
+  transform: rotateX(-90deg);
+}
+.wall-y {
+  transform-origin: left center;
+  transform: rotateY(-90deg);
+}
+
+/* 소품 */
+.plant .leaves {
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  top: 0;
+  height: 62%;
+  background: radial-gradient(circle at 35% 40%, #7fcf8c, #3f9a55 70%);
+  border-radius: 50% 50% 45% 45%;
+  box-shadow: inset -6px -6px 0 rgba(0, 0, 0, 0.12);
+}
+.plant .pot {
+  position: absolute;
+  left: 25%;
+  right: 25%;
+  bottom: 0;
+  height: 40%;
+  background: #c76b4a;
+  border-radius: 4px 4px 8px 8px;
+}
+.sign {
+  font-size: 11px;
+  color: #fff;
+  background: rgba(40, 44, 56, 0.85);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+}
+.books {
+  position: absolute;
+  inset: 2px;
+  background: repeating-linear-gradient(90deg, #d9534f 0 5px, #f0ad4e 5px 9px, #5bc0de 9px 14px, #5cb85c 14px 18px, #8e6bbf 18px 23px);
+  border-radius: 2px;
+  opacity: 0.9;
+}
+.records {
+  position: absolute;
+  inset: 3px;
+  background: repeating-linear-gradient(90deg, #2b2b2b 0 3px, #f3f3f3 3px 4px, #c0392b 4px 7px, #f3f3f3 7px 8px);
+  border-radius: 2px;
+}
+.bigscreen .screen-face {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 82%;
+  background: linear-gradient(135deg, #1c2130, #2b3450);
+  border: 3px solid #0f1320;
+  border-radius: 6px;
+  color: #e9f0ff;
+  font-family: var(--title);
+  font-size: 18px;
+  display: grid;
+  place-items: center;
+  letter-spacing: 1px;
+}
+.bigscreen .screen-foot {
+  position: absolute;
+  left: 45%;
+  right: 45%;
+  bottom: 0;
+  height: 18%;
+  background: #3a3f4c;
+}
+.neon {
+  font-family: var(--title);
+  font-size: 30px;
+  color: #ff6bd6;
+  text-shadow:
+    0 0 6px #ff6bd6,
+    0 0 14px #ff2fbf,
+    0 0 26px #ff2fbf;
+  display: grid;
+  place-items: center;
+}
+.lamp .lamp-head {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 26px;
+  background: #f7e6b0;
+  border-radius: 6px 6px 10px 10px;
+  box-shadow: 0 8px 18px rgba(255, 220, 120, 0.5);
+}
+.lamp .lamp-pole {
+  position: absolute;
+  left: 50%;
+  top: 26px;
+  bottom: 0;
+  width: 3px;
+  margin-left: -1.5px;
+  background: #333;
+}
+.disc {
+  position: absolute;
+  left: 4px;
+  top: 3px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #e74c3c 0 4px, #111 5px 9px, #2a2a2a 9px 12px);
+}
+.disc.spin {
+  animation: spin 4s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.note {
+  position: absolute;
+  left: 2px;
+  top: -28px;
+  color: #ff6bd6;
+  font-size: 16px;
+  animation: floatnote 1.6s ease-in-out infinite;
+}
+@keyframes floatnote {
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+/* 인물 */
+.person3 .p-btn {
+  position: absolute;
+  inset: 0;
+  background: none;
+  border: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0;
+  cursor: pointer;
+}
+.person3 .p-btn:not(button) {
+  cursor: default;
+}
+.person3.dim {
+  opacity: 0.8;
+}
+.person3 .p-head {
+  position: relative;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 3px var(--team), 0 4px 10px rgba(0, 0, 0, 0.2);
+  background: var(--team);
+  overflow: visible;
+  z-index: 2;
+}
+.person3 .p-head img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+.person3 .p-head b {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  color: #fff;
+  font-family: var(--title);
+  font-size: 20px;
+}
+.person3.selected .p-head {
+  box-shadow: 0 0 0 5px var(--team), 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+.person3 .p-dot {
+  position: absolute;
+  right: -4px;
+  bottom: -2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+}
+.person3 .p-dot.pulse {
+  animation: pulse 1.2s infinite;
+}
+.person3 .p-body {
+  width: 36px;
+  height: 40px;
+  margin-top: -8px;
+  border-radius: 14px 14px 10px 10px;
+  box-shadow: inset -5px 0 0 rgba(0, 0, 0, 0.12);
+}
+.person3 .p-tag {
+  margin-top: 3px;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: #fff;
+  border: 1px solid var(--line);
+  font-size: 11px;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+}
+.person3 .p-bubble {
+  position: absolute;
+  left: 50%;
+  top: -26px;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 11px;
+  box-shadow: var(--shadow);
+}
+.person3 .p-bubble::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -5px;
+  width: 8px;
+  height: 8px;
+  background: #fff;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  transform: translateX(-50%) rotate(45deg);
 }

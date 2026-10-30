@@ -38,10 +38,27 @@ function spot(character: string, location: Location, idx: number): [number, numb
 
 const pct = (x: number, y: number) => ({ left: `${x / 12}%`, top: `${y / 7.38}%` });
 
-export function Office2D({ office, selected, onSelect }: { office: OfficeData; selected: string; onSelect: (id: string) => void }) {
+export function Office2D({
+  office,
+  selected,
+  onSelect,
+  onToggleView,
+}: {
+  office: OfficeData;
+  selected: string;
+  onSelect: (id: string) => void;
+  onToggleView?: () => void;
+}) {
   const leaders = office.order.map((id) => office.states[id]).filter(Boolean);
   return (
     <section className="panel office" aria-label="사무실">
+      {onToggleView && (
+        <div className="scene-btns">
+          <button type="button" className="btn small" onClick={onToggleView}>
+            3D 사무실
+          </button>
+        </div>
+      )}
       {ZONES.map((z) => (
         <div key={z.key} className={`zone ${z.cls ?? ""}`} style={{ left: `${z.x / 12}%`, top: `${z.y / 7.38}%`, width: `${z.w / 12}%`, height: `${z.h / 7.38}%` }}>
           {z.label}
