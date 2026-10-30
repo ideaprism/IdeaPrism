@@ -11,6 +11,7 @@ export function App() {
   const office = useOffice();
   const [selected, setSelected] = useState<string>("");
   const [admin, setAdmin] = useState(false);
+  const [focusChat, setFocusChat] = useState(0);
 
   useEffect(() => {
     if (!selected && office.order.length) setSelected(office.order[0]);
@@ -18,9 +19,17 @@ export function App() {
 
   const current = office.states[selected];
 
+  /** 결재함 클릭: 가장 오래된 결재의 팀장 선택 + 대화 탭 (PRD 8.2) */
+  const openApprovals = () => {
+    const oldest = office.approvals[0];
+    if (oldest) setSelected(oldest.leaderId);
+    setAdmin(false);
+    setFocusChat((n) => n + 1);
+  };
+
   return (
     <div className="app">
-      <TopBar office={office} onAdmin={() => setAdmin((v) => !v)} adminOpen={admin} />
+      <TopBar office={office} onAdmin={() => setAdmin((v) => !v)} adminOpen={admin} onApprovals={openApprovals} />
       {admin ? (
         <div className="main" style={{ gridTemplateColumns: "1fr" }}>
           <AdminPage onClose={() => setAdmin(false)} />
@@ -32,7 +41,7 @@ export function App() {
             <TeamCards office={office} selected={selected} onSelect={setSelected} />
             <Board office={office} />
           </div>
-          {current ? <LeaderPanel office={office} leader={current} /> : <div className="panel side" />}
+          {current ? <LeaderPanel office={office} leader={current} focusChat={focusChat} /> : <div className="panel side" />}
         </div>
       )}
     </div>

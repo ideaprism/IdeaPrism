@@ -1,20 +1,16 @@
-// M2: 보드는 현재 상태에서 계산한 임시 표시. M3에서 board/tasks.json 으로 교체.
-import type { OfficeData } from "../api";
+// 업무 보드 (PRD 8.5): board/tasks.json 을 서버가 기록하고 여기서는 보여만 준다. 칸마다 최근 2건.
+import type { OfficeData, Task } from "../api";
 
 export function Board({ office }: { office: OfficeData }) {
-  const leaders = office.order.map((id) => office.states[id]).filter(Boolean);
-  const doing = leaders.filter((l) => l.currentJobTitle).map((l) => `${l.name} · ${l.currentJobTitle}`);
-  const todo = leaders.filter((l) => l.queued > 0).map((l) => `${l.name} · 대기 ${l.queued}건`);
-  const done = leaders
-    .flatMap((l) =>
-      (office.transcripts[l.id] ?? [])
-        .filter((e) => e.role === "result" && e.ok)
-        .slice(-2)
-        .map((e) => ({ at: e.at, text: `${l.name} · ${titleFor(office, l.id, e.jobId)}` })),
-    )
-    .sort((a, b) => (a.at < b.at ? 1 : -1))
-    .slice(0, 2)
-    .map((x) => x.text);
+  const name = (t: Task) => office.states[t.leaderId]?.name ?? t.team;
+  const pick = (statuses: Task["status"][]) =>
+    office.tasks
+      .filter((t) => statuses.includes(t.status))
+      .sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1))
+      .map((t) => ({ id: t.id, text: `${name(t)} · ${t.title}`, bad: t.status === "blocked", outputs: t.outputs }));
+  const todo = pick(["todo"]);
+  const doing = pick(["doing"]);
+  const done = pick(["done", "blocked"]);
   return (
     <section className="panel board" aria-label="업무 보드">
       <Col title="대기" items={todo} />
@@ -24,18 +20,22 @@ export function Board({ office }: { office: OfficeData }) {
   );
 }
 
-function titleFor(office: OfficeData, leaderId: string, jobId?: string): string {
-  const u = (office.transcripts[leaderId] ?? []).find((e) => e.role === "user" && e.jobId === jobId);
-  return (u?.text ?? "").split(/\r?\n/)[0].slice(0, 40) || "업무";
-}
-
-function Col({ title, items }: { title: string; items: string[] }) {
+function Col({ title, items }: { title: string; items: { id: string; text: string; bad: boolean; outputs: string[] }[] }) {
   return (
     <div className="col">
       <b>
         {title} {items.length ? `(${items.length})` : ""}
       </b>
-      {items.length ? items.slice(0, 2).map((t, i) => <div key={i} className="item">{t}</div>) : <div className="empty">없음</div>}
+      {items.length ? (
+        items.slice(0, 2).map((t) => (
+          <div key={t.id} className="item" title={t.outputs.length ? `산출물: ${t.outputs.join(", ")}` : t.id} style={t.bad ? { color: "#e53935" } : undefined}>
+            {t.bad ? "⚠ " : ""}
+            {t.text}
+          </div>
+        ))
+      ) : (
+        <div className="empty">없음</div>
+      )}
     </div>
   );
 }

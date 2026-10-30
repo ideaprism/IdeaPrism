@@ -491,6 +491,58 @@ select {
   color: #e53935;
   background: #fdecea;
 }
+.msg.approval {
+  align-self: stretch;
+  max-width: 100%;
+  border: 2px solid #eb5757;
+  background: #fff7f7;
+  border-radius: 12px;
+  font-size: 13px;
+}
+.msg.approval.approved {
+  border-color: #27ae60;
+  background: #f1faf5;
+}
+.msg.approval.rejected {
+  border-color: #cfd6e3;
+  background: #f7f8fb;
+  color: var(--muted);
+}
+.msg.approval .ttl {
+  font-weight: 600;
+}
+.msg.approval .tgt {
+  font-family: ui-monospace, Consolas, monospace;
+  font-size: 12px;
+  word-break: break-all;
+  margin: 2px 0;
+}
+.msg.approval .rsn {
+  color: var(--muted);
+  font-size: 12px;
+}
+.msg.approval .acts {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.msg.approval .acts button {
+  border: 0;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-weight: 600;
+  color: #fff;
+}
+.msg.approval .acts .ok {
+  background: #27ae60;
+}
+.msg.approval .acts .no {
+  background: #eb5757;
+}
+.msg.approval .dec {
+  margin-top: 4px;
+  font-size: 12px;
+}
 .msg.system {
   align-self: center;
   font-size: 12px;

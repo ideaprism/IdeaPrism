@@ -29,11 +29,36 @@ export interface TranscriptEntry {
   at: string;
   leaderId: string;
   jobId?: string;
-  role: "user" | "leader" | "tool" | "result" | "system";
+  role: "user" | "leader" | "tool" | "result" | "system" | "approval" | "approval_result";
   text?: string;
   tool?: string;
   target?: string;
   ok?: boolean;
+  approvalId?: string;
+}
+
+export interface Approval {
+  id: string;
+  leaderId: string;
+  jobId?: string;
+  tool: string;
+  target: string;
+  reason?: string;
+  requestedAt: string;
+  decision?: "approve" | "reject";
+  decidedAt?: string;
+}
+
+export interface Task {
+  id: string;
+  title: string;
+  team: string;
+  leaderId: string;
+  status: "todo" | "doing" | "done" | "blocked";
+  createdAt: string;
+  updatedAt: string;
+  source: string;
+  outputs: string[];
 }
 
 export interface Manifest {
@@ -90,6 +115,8 @@ export interface OfficeData {
   states: Record<string, LeaderState>;
   order: string[];
   transcripts: Record<string, TranscriptEntry[]>;
+  approvals: Approval[];
+  tasks: Task[];
   manifest: Manifest | null;
 }
 
@@ -102,6 +129,8 @@ export function useOffice(): OfficeData {
     states: {},
     order: [],
     transcripts: {},
+    approvals: [],
+    tasks: [],
     manifest: null,
   });
   const retry = useRef<number | undefined>(undefined);
@@ -138,8 +167,14 @@ export function useOffice(): OfficeData {
               states,
               order: leaders.map((l) => l.id),
               transcripts,
+              approvals: (msg.approvals as Approval[]) ?? d.approvals,
+              tasks: (msg.tasks as Task[]) ?? d.tasks,
             };
           }
+          if (msg.kind === "approval_requested" || msg.kind === "approval_decided") {
+            return { ...d, approvals: msg.pending as Approval[] };
+          }
+          if (msg.kind === "tasks") return { ...d, tasks: msg.tasks as Task[] };
           if (msg.kind === "state") {
             const s = msg.state as LeaderState;
             const order = d.order.includes(s.id) ? d.order : [...d.order, s.id];

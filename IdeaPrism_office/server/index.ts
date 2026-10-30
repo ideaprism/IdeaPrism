@@ -9,6 +9,8 @@ import { ConfigStore, appDir, type ConfigName } from "./config.js";
 import { SessionStore, TranscriptStore, appendLog } from "./local.js";
 import { LeaderRunner, type OfficeEvent } from "./leaderRunner.js";
 import { gitPull, gitStatus } from "./gitApi.js";
+import { ApprovalQueue, type Decision } from "./approvals.js";
+import { TaskBoard } from "./tasks.js";
 
 const HOST = "127.0.0.1";
 const webDist = path.join(appDir, "web", "dist");
@@ -52,11 +54,17 @@ async function main(): Promise<void> {
     for (const c of wss.clients) if (c.readyState === WebSocket.OPEN) c.send(data);
   };
 
+  const global = (kind: string, data: Record<string, unknown>): void => broadcast({ leaderId: "*", at: new Date().toISOString(), kind, ...data });
+  const approvals = new ApprovalQueue(global);
+  const board = new TaskBoard(path.join(store.config.root, "board", "tasks.json"), global);
+  await board.load();
+  await board.reconcile();
+
   const runners = new Map<string, LeaderRunner>();
   /** 팀장 목록 동기화: 새 id는 추가, 사라진 id는 제거(실행 중이면 끝날 때까지 둔다). 기존 러너는 유지. */
   const syncRunners = (): void => {
     const ids = new Set(store.teams.leaders.map((l) => l.id));
-    for (const id of ids) if (!runners.has(id)) runners.set(id, new LeaderRunner(id, store, sessions, transcripts, broadcast));
+    for (const id of ids) if (!runners.has(id)) runners.set(id, new LeaderRunner(id, store, sessions, transcripts, approvals, board, broadcast));
     for (const [id, r] of runners) if (!ids.has(id) && !r.currentJob) runners.delete(id);
   };
   syncRunners();
@@ -101,6 +109,16 @@ async function main(): Promise<void> {
         await r.resetSession();
         return send(200, { ok: true });
       }
+      if (req.method === "GET" && url.pathname === "/api/approvals") return send(200, approvals.list());
+      if (req.method === "POST" && (g = m(/^\/api\/approvals\/([\w-]+)\/decide$/))) {
+        const body = (await readJson(req)) as { decision?: Decision };
+        if (body.decision !== "approve" && body.decision !== "reject") return send(400, { error: "decision 은 approve 또는 reject" });
+        const a = approvals.decide(g[1], body.decision);
+        if (!a) return send(404, { error: "대기 중인 결재가 아닙니다" });
+        await appendLog({ type: "approval_decision", approvalId: a.id, leaderId: a.leaderId, decision: a.decision });
+        return send(200, a);
+      }
+      if (req.method === "GET" && url.pathname === "/api/tasks") return send(200, board.all());
       if (req.method === "POST" && url.pathname === "/api/config/mkdir") {
         // 관리자 페이지 "폴더 만들기": 설정에 적힌 경로만 만든다 (임의 경로 금지)
         const body = (await readJson(req)) as { key?: string };
@@ -161,7 +179,17 @@ async function main(): Promise<void> {
       wss.emit("connection", ws, req);
       const transcriptsById: Record<string, unknown> = {};
       for (const r of runners.values()) transcriptsById[r.id] = await r.transcript();
-      ws.send(JSON.stringify({ kind: "hello", pc, deadline: store.config.deadline, leaders: states(), transcripts: transcriptsById }));
+      ws.send(
+        JSON.stringify({
+          kind: "hello",
+          pc,
+          deadline: store.config.deadline,
+          leaders: states(),
+          transcripts: transcriptsById,
+          approvals: approvals.list(),
+          tasks: board.all(),
+        }),
+      );
     });
   });
 
@@ -205,8 +233,16 @@ function printEvent(store: ConfigStore, e: OfficeEvent): void {
       return console.log(`${t} [${name}] 도구 ${e.tool} ${String(e.target).slice(0, 100)}`);
     case "result":
       return console.log(`${t} [${name}] 완료 ok=${e.ok} turns=${e.turns} cost=$${Number(e.costUsd).toFixed(3)} session=${e.sessionId}`);
-    case "approval_needed":
-      return console.log(`${t} [${name}] 결재 필요(자동 반려) ${e.tool} ${e.target}`);
+    case "approval_requested": {
+      const a = e.approval as { leaderId: string; tool: string; target: string };
+      return console.log(`${t} [${store.leader(a.leaderId)?.name ?? a.leaderId}] 결재 요청 ${a.tool} ${a.target}`);
+    }
+    case "approval_decided": {
+      const a = e.approval as { leaderId: string; tool: string; decision: string };
+      return console.log(`${t} [${store.leader(a.leaderId)?.name ?? a.leaderId}] 결재 ${a.decision === "approve" ? "승인" : "반려"} ${a.tool}`);
+    }
+    case "tasks":
+      return;
     case "state": {
       const s = e.state as { status: string; location: string };
       return console.log(`${t} [${name}] 상태 ${s.status} @${s.location}`);

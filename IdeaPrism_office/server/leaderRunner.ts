@@ -6,6 +6,8 @@ import path from "node:path";
 import { query, type Options, type PermissionResult, type Query, type SDKMessage, type SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
 import type { ConfigStore, LeaderDef } from "./config.js";
 import { SessionStore, TranscriptStore, appendLog, type TranscriptEntry } from "./local.js";
+import type { ApprovalQueue } from "./approvals.js";
+import type { TaskBoard } from "./tasks.js";
 
 export type Status = "idle" | "thinking" | "research" | "typing" | "running" | "approval" | "done" | "error" | "meeting";
 export type Location = "desk" | "library" | "approvalTable" | "lounge" | "meeting";
@@ -41,6 +43,7 @@ export interface OfficeEvent {
 interface Job {
   id: string;
   text: string;
+  taskId: string;
 }
 
 const BUBBLES: Record<Status, string> = {
@@ -113,12 +116,15 @@ export class LeaderRunner {
   private seq = 0;
   private doneTimer?: NodeJS.Timeout;
   private libraryTimer?: NodeJS.Timeout;
+  private pendingWrites = new Map<string, string>();
 
   constructor(
     public readonly id: string,
     private readonly store: ConfigStore,
     private readonly sessions: SessionStore,
     private readonly transcripts: TranscriptStore,
+    private readonly approvals: ApprovalQueue,
+    private readonly board: TaskBoard,
     private readonly emit: (e: OfficeEvent) => void,
   ) {}
 
@@ -167,11 +173,12 @@ export class LeaderRunner {
     return this.transcripts.load(this.id);
   }
 
-  /** 지시 접수. 실행 중이면 대기열에 넣는다. */
-  instruct(text: string): Job {
-    const job = { id: `${this.id}_${Date.now()}_${++this.seq}`, text };
+  /** 지시 접수. 실행 중이면 대기열에 넣는다. 업무 보드에 task(todo)를 만든다. */
+  instruct(text: string, source: "chat" | "handoff" | "meeting" = "chat"): Job {
+    const task = this.board.create({ title: titleOf(text), team: this.def.team, leaderId: this.id, source });
+    const job: Job = { id: `${this.id}_${Date.now()}_${++this.seq}`, text, taskId: task.id };
     this.jobs.push(job);
-    void appendLog({ type: "instruct", leaderId: this.id, jobId: job.id, text });
+    void appendLog({ type: "instruct", leaderId: this.id, jobId: job.id, taskId: task.id, text });
     void this.say({ role: "user", text, jobId: job.id });
     this.event("queued", { jobId: job.id, position: this.jobs.length });
     this.broadcastState();
@@ -181,6 +188,7 @@ export class LeaderRunner {
 
   async interrupt(): Promise<boolean> {
     if (!this.active) return false;
+    this.approvals.cancelFor(this.id);
     await this.active.interrupt();
     this.event("interrupted", { jobId: this.currentJob?.id });
     void this.say({ role: "system", text: "대표가 중단함", jobId: this.currentJob?.id });
@@ -206,8 +214,9 @@ export class LeaderRunner {
   private async run(job: Job): Promise<void> {
     this.currentJob = job;
     this.clearTimers();
+    this.board.update(job.taskId, { status: "doing" });
     this.setStatus("thinking", "desk");
-    this.event("start", { jobId: job.id, text: job.text, cwd: this.cwd, resume: this.sessionId ?? null });
+    this.event("start", { jobId: job.id, taskId: job.taskId, text: job.text, cwd: this.cwd, resume: this.sessionId ?? null });
     const input = new Pushable<SDKUserMessage>();
     input.push({ type: "user", message: { role: "user", content: job.text }, parent_tool_use_id: null });
     try {
@@ -233,8 +242,12 @@ export class LeaderRunner {
         if (msg.type === "result") input.close();
       }
       if (this.status !== "done" && this.status !== "error") this.setStatus("done", "desk");
+      if (this.status === "done") this.board.update(job.taskId, { status: "done" });
+      else this.board.update(job.taskId, { status: "blocked" });
     } catch (e) {
       const err = e as Error;
+      this.approvals.cancelFor(this.id);
+      this.board.update(job.taskId, { status: "blocked" });
       this.setStatus("error", "desk");
       this.event("error", { jobId: job.id, message: err.message });
       void this.say({ role: "system", text: `오류: ${err.message}`, jobId: job.id });
@@ -272,6 +285,10 @@ export class LeaderRunner {
             this.lastTool = block.name;
             this.lastToolAt = new Date().toISOString();
             this.mapTool(block.name, target);
+            if (["Write", "Edit", "MultiEdit", "NotebookEdit"].includes(block.name) && target) {
+              // 결과가 성공으로 돌아온 뒤에만 산출물로 기록한다 (반려·실패는 제외)
+              this.pendingWrites.set(block.id, path.relative(this.store.resolve("."), path.resolve(this.cwd, target)).replace(/\\/g, "/"));
+            }
             this.event("tool_use", { jobId: job.id, tool: block.name, target, toolUseId: block.id });
             void this.say({ role: "tool", tool: block.name, target, jobId: job.id });
             void appendLog({ type: "tool_use", leaderId: this.id, jobId: job.id, tool: block.name, target });
@@ -285,6 +302,11 @@ export class LeaderRunner {
           for (const block of content) {
             if (block.type === "tool_result") {
               this.event("tool_result", { jobId: job.id, toolUseId: block.tool_use_id, isError: block.is_error ?? false });
+              const out = this.pendingWrites.get(block.tool_use_id);
+              if (out !== undefined) {
+                this.pendingWrites.delete(block.tool_use_id);
+                if (!block.is_error) this.board.addOutput(job.taskId, out);
+              }
             }
           }
         }
@@ -373,20 +395,27 @@ export class LeaderRunner {
   }
 
   /**
-   * PRD 10.2 권한 기본값. M2까지는 결재 UI가 없으므로 "결재 필요"는 반려로 처리하고 이벤트만 남긴다.
-   * M3에서 ApprovalQueue 가 이 자리에 들어온다.
+   * PRD 10.2 권한 기본값 + 결재 (PRD 10.2 흐름):
+   * 자동 허용이 아니면 ApprovalQueue 에 넣고, 팀장은 결재 테이블로 이동해 대표의 승인/반려를 기다린다.
    */
   private async canUseTool(tool: string, input: Record<string, unknown>): Promise<PermissionResult> {
     const p = this.store.permissions;
     const allow = (): PermissionResult => ({ behavior: "allow", updatedInput: input });
-    const needApproval = (reason: string): PermissionResult => {
-      this.event("approval_needed", { jobId: this.currentJob?.id, tool, target: targetOf(input), reason });
-      void this.say({ role: "system", text: `결재 필요 (자동 반려, M3에서 결재 카드로 대체): ${reason}`, jobId: this.currentJob?.id });
-      void appendLog({ type: "approval_needed", leaderId: this.id, tool, target: targetOf(input), reason, decision: "auto-deny(M2)" });
-      return {
-        behavior: "deny",
-        message: `대표 결재가 필요한 작업이라 지금은 실행할 수 없다 (${reason}). 대안으로 진행하거나 보고로 마무리하라.`,
-      };
+    const needApproval = async (reason: string): Promise<PermissionResult> => {
+      const jobId = this.currentJob?.id;
+      const target = targetOf(input);
+      const prev = { status: this.status, location: this.location };
+      this.setStatus("approval", "approvalTable");
+      const requested = this.approvals.request({ leaderId: this.id, jobId, tool, target, reason });
+      const pendingId = requested.approval.id;
+      void this.say({ role: "approval", approvalId: pendingId, tool, target, text: reason, jobId });
+      void appendLog({ type: "approval_requested", leaderId: this.id, jobId, approvalId: pendingId, tool, target, reason });
+      const decision = await requested.decision;
+      void appendLog({ type: "approval_decided", leaderId: this.id, jobId, approvalId: pendingId, decision });
+      void this.say({ role: "approval_result", approvalId: pendingId, ok: decision === "approve", text: decision === "approve" ? "승인" : "반려", jobId });
+      this.setStatus(prev.status === "approval" ? "thinking" : prev.status, "desk");
+      if (decision === "approve") return allow();
+      return { behavior: "deny", message: "대표가 반려함. 대안으로 진행하거나 보고로 마무리하라." };
     };
 
     if (p.autoAllowTools.includes(tool)) return allow();

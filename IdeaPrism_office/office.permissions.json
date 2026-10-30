@@ -1,8 +1,34 @@
 {
   "_설명": "PRD 10.2 권한 기본값. 경로는 레포 루트 기준. $team = 팀장 자신의 팀 폴더.",
-  "autoAllowTools": ["Read", "Glob", "Grep", "WebSearch", "WebFetch", "TodoWrite"],
-  "autoAllowWritePaths": ["$team/work", "wiki/raw"],
-  "approvalWritePaths": ["handoff", "meetings"],
-  "bashAutoAllow": ["npm test", "npm run lint", "git status", "git diff"],
-  "bashAlwaysApprove": ["git push", "rm ", "rmdir", "del ", "Remove-Item", "git reset --hard", "git clean"]
+  "autoAllowTools": [
+    "Read",
+    "Glob",
+    "Grep",
+    "WebSearch",
+    "WebFetch",
+    "TodoWrite"
+  ],
+  "autoAllowWritePaths": [
+    "$team/work",
+    "wiki/raw"
+  ],
+  "approvalWritePaths": [
+    "handoff",
+    "meetings"
+  ],
+  "bashAutoAllow": [
+    "npm test",
+    "npm run lint",
+    "git status",
+    "git diff"
+  ],
+  "bashAlwaysApprove": [
+    "git push",
+    "rm ",
+    "rmdir",
+    "del ",
+    "Remove-Item",
+    "git reset --hard",
+    "git clean"
+  ]
 }

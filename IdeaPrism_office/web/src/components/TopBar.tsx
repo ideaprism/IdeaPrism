@@ -1,7 +1,17 @@
 import { useEffect, useState } from "react";
 import type { OfficeData } from "../api";
 
-export function TopBar({ office, onAdmin, adminOpen }: { office: OfficeData; onAdmin: () => void; adminOpen: boolean }) {
+export function TopBar({
+  office,
+  onAdmin,
+  adminOpen,
+  onApprovals,
+}: {
+  office: OfficeData;
+  onAdmin: () => void;
+  adminOpen: boolean;
+  onApprovals: () => void;
+}) {
   const [now, setNow] = useState(new Date());
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 1000);
@@ -9,7 +19,7 @@ export function TopBar({ office, onAdmin, adminOpen }: { office: OfficeData; onA
   }, []);
 
   const dday = office.deadline ? Math.ceil((new Date(office.deadline.date).getTime() - startOfDay(now)) / 86_400_000) : null;
-  const approvals = Object.values(office.states).filter((s) => s.status === "approval").length;
+  const approvals = office.approvals.length;
 
   return (
     <header className="topbar">
@@ -26,7 +36,7 @@ export function TopBar({ office, onAdmin, adminOpen }: { office: OfficeData; onA
           {office.deadline.label} D{dday > 0 ? `-${dday}` : dday === 0 ? "-Day" : `+${-dday}`}
         </span>
       )}
-      <button className="iconbtn" type="button" aria-label="결재함" title="결재함 (M3)">
+      <button className="iconbtn" type="button" aria-label={`결재함, 대기 ${approvals}건`} title="가장 오래된 결재로 이동" onClick={onApprovals}>
         결재함
         {approvals > 0 && <span className="badge">{approvals}</span>}
       </button>

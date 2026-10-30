@@ -50,7 +50,7 @@ export function AdminPage({ onClose }: { onClose: () => void }) {
         {tab === "repo" && <RepoTab />}
         {tab === "paths" && <PathsTab />}
         {tab === "teams" && <TeamsTab />}
-        {tab === "perms" && <div className="note">권한 편집(자동 허용 경로·Bash 허용 명령)은 M3 결재 기능과 함께 추가됩니다. 현재 값은 office.permissions.json 에 있습니다.</div>}
+        {tab === "perms" && <PermsTab />}
       </div>
     </section>
   );
@@ -261,6 +261,82 @@ function PathsTab() {
           </tbody>
         </table>
       </details>
+    </div>
+  );
+}
+
+/* ---------------- 탭4 권한 (PRD 10.2, 12) ---------------- */
+interface PermissionsConfig {
+  autoAllowTools: string[];
+  autoAllowWritePaths: string[];
+  approvalWritePaths: string[];
+  bashAutoAllow: string[];
+  bashAlwaysApprove: string[];
+}
+
+const PERM_FIELDS: [keyof PermissionsConfig, string, string][] = [
+  ["autoAllowTools", "자동 허용 도구", "결재 없이 쓰는 도구 이름. 한 줄에 하나."],
+  ["autoAllowWritePaths", "자동 허용 쓰기 경로", "이 경로 아래 Write/Edit 는 결재 없음. $team = 팀장 자신의 팀 폴더."],
+  ["approvalWritePaths", "결재 쓰기 경로 (참고)", "handoff·meetings 등. 자동 허용 밖은 전부 결재이므로 표시용."],
+  ["bashAutoAllow", "Bash 자동 허용 명령", "이 문자열로 시작하는 명령은 결재 없음 (예: git status)."],
+  ["bashAlwaysApprove", "Bash 항상 결재 명령", "이 문자열이 포함되면 항상 결재 (예: git push, rm )."],
+];
+
+function PermsTab() {
+  const [perm, setPerm] = useState<PermissionsConfig | null>(null);
+  const [file, setFile] = useState("");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    api<ConfigRes<PermissionsConfig>>("/api/config/permissions")
+      .then((r) => {
+        setPerm(r.data);
+        setFile(r.file);
+      })
+      .catch((e) => setMsg({ ok: false, text: (e as Error).message }));
+  }, []);
+
+  if (!perm) return <div className="note">불러오는 중…</div>;
+
+  async function save() {
+    setMsg(null);
+    try {
+      const r = await api<SaveRes>("/api/config/permissions", { method: "PUT", json: perm });
+      setDirty(false);
+      setMsg({ ok: true, text: `저장했습니다. ${r.note}` });
+    } catch (e) {
+      setMsg({ ok: false, text: (e as Error).message });
+    }
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 12 }}>
+      <div className="note">파일: {file} (두 PC 공통, git 추적). 기본값은 PRD 10.2. 저장하면 다음 권한 요청부터 반영됩니다.</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 12 }}>
+        {PERM_FIELDS.map(([k, label, help]) => (
+          <label key={k} style={{ display: "grid", gap: 4 }}>
+            <span style={{ fontWeight: 600 }}>{label}</span>
+            <span style={{ color: "var(--muted)", fontSize: 12 }}>{help}</span>
+            <textarea
+              rows={6}
+              value={perm[k].join("\n")}
+              onChange={(e) => {
+                setPerm({ ...perm, [k]: e.target.value.split("\n").map((s) => s.trim()).filter(Boolean) });
+                setDirty(true);
+              }}
+              style={{ border: "1px solid var(--line)", borderRadius: 8, padding: 8, fontFamily: "ui-monospace, Consolas, monospace", fontSize: 12 }}
+            />
+          </label>
+        ))}
+      </div>
+      <div className="rowbtns">
+        <button type="button" className="btn primary" onClick={() => void save()} disabled={!dirty}>
+          저장
+        </button>
+        {dirty && <span className="note" style={{ padding: "4px 8px" }}>저장하지 않은 변경이 있습니다.</span>}
+      </div>
+      {msg && <div className={`note ${msg.ok ? "ok" : "bad"}`}>{msg.text}</div>}
     </div>
   );
 }

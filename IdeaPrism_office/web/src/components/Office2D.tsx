@@ -57,7 +57,9 @@ export function Office2D({ office, selected, onSelect }: { office: OfficeData; s
         창
       </div>
       {leaders.map((l, i) => {
-        const [x, y] = spot(l.character, l.location, i);
+        // 결재 테이블은 도착 순서대로 착석 (PRD 8.3)
+        const seat = l.location === "approvalTable" ? Math.max(0, office.approvals.findIndex((a) => a.leaderId === l.id)) : i;
+        const [x, y] = spot(l.character, l.location, seat);
         return (
           <button
             key={l.id}

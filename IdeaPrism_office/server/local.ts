@@ -46,11 +46,12 @@ export interface TranscriptEntry {
   at: string;
   leaderId: string;
   jobId?: string;
-  role: "user" | "leader" | "tool" | "result" | "system";
+  role: "user" | "leader" | "tool" | "result" | "system" | "approval" | "approval_result";
   text?: string;
   tool?: string;
   target?: string;
   ok?: boolean;
+  approvalId?: string;
 }
 
 /** 팀장별 대화 기록. 새로고침·재실행 후에도 이어지도록 .local/transcripts/<id>.jsonl 에 추가한다. */

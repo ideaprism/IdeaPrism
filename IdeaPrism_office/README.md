@@ -30,9 +30,12 @@ npm run office -- --pc 회사
 | 상단 바 | 연결 상태, D-day, 결재함(M3), 시각, ⚙ 관리자 |
 | 사무실 (2D) | PRD 8.3 구역 평면도. 팀장이 상태에 따라 자리·도서관·탕비실로 이동 (3D 연출은 M4) |
 | 팀 상태 카드 | 상태 알약, 현재 업무, 위치·마지막 도구·경과 |
-| 업무 보드 | 대기/진행/완료 (M3에서 board/tasks.json 으로 교체) |
-| 오른쪽 패널 | 상태별 표정 이미지, 대화(사용자·팀장·도구·결과), 입력창(Enter 전송, 한글 조합 중 무시), 중단 |
-| 관리자 | 저장소(git status·pull) · 경로(존재 확인·폴더 만들기) · 팀장 매칭(줄 추가·삭제) · 권한(M3) |
+| 업무 보드 | `board/tasks.json` 의 대기/진행/완료(차단 포함). 서버만 기록: 지시 시 todo → 실행 doing → 결과 done / 오류 blocked, 성공한 Write/Edit 경로를 outputs 에 누적 |
+| 오른쪽 패널 | 상태별 표정 이미지, 대화(사용자·팀장·도구·결과·**결재 카드**), 입력창(Enter 전송, 한글 조합 중 무시), 중단, 새 세션 |
+| 결재 (M3) | 자동 허용이 아닌 도구 요청 → 팀장이 대표실 결재 테이블로 이동 → 결재함 배지 +1 → 대화 탭 카드에서 승인/반려 → 승인이면 실행, 반려면 팀장에게 "대표가 반려함, 대안으로 진행" 전달. 기록은 `.local/approvals.log` |
+| 관리자 | 저장소(git status·pull) · 경로(존재 확인·폴더 만들기) · 팀장 매칭(줄 추가·삭제) · 권한(자동 허용 도구·경로, Bash 허용·항상 결재 명령) |
+
+권한 기본값(PRD 10.2, `office.permissions.json`): Read·Glob·Grep·WebSearch·WebFetch 자동 허용. Write/Edit 는 자기 팀 `work/`·`wiki/raw/`만 자동, 그 밖(handoff·meetings·팀 밖)은 결재. Bash 는 `npm test` `npm run lint` `git status` `git diff` 만 자동, `git push`·삭제는 항상 결재. 팀장을 중단하면 대기 중인 결재는 반려 처리된다.
 
 ## API
 
@@ -46,9 +49,12 @@ npm run office -- --pc 회사
 | POST | `/api/leaders/:id/reset-session` | 세션 버리고 새로 시작 |
 | GET / PUT | `/api/config/config` `teams` `permissions` | 설정 읽기·저장 (저장 후 경로 검증, 다음 실행부터 반영) |
 | POST | `/api/config/mkdir` | `{ "key": "wikiRaw" }` 설정에 적힌 경로만 폴더 생성 |
+| GET | `/api/approvals` | 대기 중인 결재 (요청 순) |
+| POST | `/api/approvals/:id/decide` | `{ "decision": "approve" \| "reject" }` |
+| GET | `/api/tasks` | 업무 보드 전체 |
 | GET | `/api/git/status` | 브랜치·마지막 커밋·변경 수 |
 | POST | `/api/git/pull` | `git pull --ff-only` (push는 하지 않음) |
-| WS | `/ws` | 접속 시 `hello`(상태·대화 전체). 이후 `state`(상태·위치) `transcript`(대화 한 줄) 와 원시 이벤트 `start` `init` `text` `tool_use` `tool_result` `approval_needed` `result` `error` |
+| WS | `/ws` | 접속 시 `hello`(상태·대화·결재·보드 전체). 이후 `state`(상태·위치) `transcript`(대화 한 줄) `approval_requested`/`approval_decided`(대기 목록 포함) `tasks`(보드 전체) 와 원시 이벤트 `start` `init` `text` `tool_use` `tool_result` `result` `error` |
 
 상태 매핑(PRD 7.2): Read/Glob/Grep → `research`(wiki 경로면 도서관으로 이동 후 `libraryVisitSeconds` 뒤 복귀), WebSearch/WebFetch → `research`, Write/Edit → `typing`, Bash → `running`, 결과 → `done`(10초 뒤 `idle`·탕비실), 오류 → `error`.
 
@@ -58,8 +64,10 @@ npm run office -- --pc 회사
 server/
   index.ts         HTTP + WebSocket (127.0.0.1)
   config.ts        설정 3파일 로더·검증·저장
-  leaderRunner.ts  팀장 1명 = Agent SDK 세션 1개 (대기열, 재개, 중단, 권한 콜백)
-  local.ts         .local/ 세션·로그
+  leaderRunner.ts  팀장 1명 = Agent SDK 세션 1개 (대기열, 재개, 중단, 상태 매핑, 권한 콜백→결재)
+  approvals.ts     ApprovalQueue (결재 대기열, .local/approvals.log)
+  tasks.ts         TaskBoard (board/tasks.json)
+  local.ts         .local/ 세션·대화 기록·로그
   gitApi.ts        git status / pull
 scripts/build-assets.mjs   team_avengers 이미지 → assets/*.webp
 assets/manifest.json       상태 → 표정 이미지 키

@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { LOCATION_LABEL, STATUS_LABEL, api, expressionUrl, faceUrl, type LeaderState, type OfficeData } from "../api";
 
-export function LeaderPanel({ office, leader }: { office: OfficeData; leader: LeaderState }) {
+export function LeaderPanel({ office, leader, focusChat }: { office: OfficeData; leader: LeaderState; focusChat: number }) {
   const [tab, setTab] = useState<"chat" | "outputs">("chat");
+  useEffect(() => setTab("chat"), [leader.id, focusChat]);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -41,6 +42,26 @@ export function LeaderPanel({ office, leader }: { office: OfficeData; leader: Le
     }
   }
 
+  async function decide(id: string, decision: "approve" | "reject") {
+    try {
+      await api(`/api/approvals/${id}/decide`, { method: "POST", json: { decision } });
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }
+
+  async function newSession() {
+    if (!confirm(`${leader.name}의 대화 세션을 새로 시작할까요? 기록은 남고, 팀장은 이전 대화를 잊습니다. (사용량 절약)`)) return;
+    try {
+      await api(`/api/leaders/${leader.id}/reset-session`, { method: "POST" });
+    } catch (e) {
+      setErr((e as Error).message);
+    }
+  }
+
+  const decided = new Map(entries.filter((e) => e.role === "approval_result").map((e) => [e.approvalId, e.ok]));
+  const pendingIds = new Set(office.approvals.map((a) => a.id));
+
   return (
     <aside className="panel side" style={{ ["--team" as string]: leader.color }} aria-label={`${leader.name} 패널`}>
       <div className="expr">
@@ -52,6 +73,9 @@ export function LeaderPanel({ office, leader }: { office: OfficeData; leader: Le
       </div>
       <div className="who">
         <span className="n">{leader.name}</span> <span className="r">{leader.teamLabel} · {leader.role}</span>
+        <button type="button" className="btn small" style={{ float: "right" }} onClick={() => void newSession()} disabled={working} title="이전 대화를 잊고 새 세션으로 시작">
+          새 세션
+        </button>
         <div className="q">{leader.bubble}</div>
       </div>
       <div className="tabs" role="tablist">
@@ -95,6 +119,31 @@ export function LeaderPanel({ office, leader }: { office: OfficeData; leader: Le
                     {e.text} · {new Date(e.at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
                   </div>
                 );
+              case "approval": {
+                const pending = e.approvalId ? pendingIds.has(e.approvalId) : false;
+                const result = e.approvalId ? decided.get(e.approvalId) : undefined;
+                return (
+                  <div key={e.id} className={`msg approval ${pending ? "pending" : result ? "approved" : "rejected"}`}>
+                    <div className="ttl">결재 요청 · {e.tool}</div>
+                    <div className="tgt">{e.target}</div>
+                    {e.text && <div className="rsn">{e.text}</div>}
+                    {pending ? (
+                      <div className="acts">
+                        <button type="button" className="ok" onClick={() => e.approvalId && void decide(e.approvalId, "approve")}>
+                          승인
+                        </button>
+                        <button type="button" className="no" onClick={() => e.approvalId && void decide(e.approvalId, "reject")}>
+                          반려
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="dec">{result === undefined ? "처리됨" : result ? "승인함" : "반려함"}</div>
+                    )}
+                  </div>
+                );
+              }
+              case "approval_result":
+                return null;
               default:
                 return (
                   <div key={e.id} className="msg system">
