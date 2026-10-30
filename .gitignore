@@ -11,3 +11,6 @@ Thumbs.db
 
 # 별도 git 저장소(ideaprism_sdg2 클론) — 중첩 커밋 방지
 ideaprism_revise/
+
+# 가상 오피스 앱: PC별 세션·로그·꾸미기 설정
+IdeaPrism_office/.local/

@@ -1,0 +1,20 @@
+{
+  "name": "ideaprism-office",
+  "version": "1.0.0",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "assets": "node scripts/build-assets.mjs"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "IDEAPRISM 가상 오피스 (로컬 전용)",
+  "private": "true",
+  "devDependencies": {
+    "sharp": "^0.35.5"
+  }
+}

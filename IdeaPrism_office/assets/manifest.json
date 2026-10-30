@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "source": "ideaprism/team_avengers images (임시). 새 에셋으로 교체 시 이 파일만 고친다.",
+  "rules": {
+    "face": "<인물>/face.webp (200px 정사각)",
+    "expression": "<인물>/<key>.webp (긴 변 720px)",
+    "fallback": "상태 키가 없으면 base → 그래도 없으면 이니셜 원"
+  },
+  "characters": {
+    "captain": {
+      "name": "캡틴",
+      "team": "plan-ops",
+      "color": "#3E63DD",
+      "face": "captain/face.webp",
+      "base": "11_base",
+      "states": {
+        "idle": "08_coffee",
+        "thinking": "04_planning",
+        "research": "04_planning",
+        "typing": "04_planning",
+        "running": "05_guide",
+        "approval": "05_guide",
+        "done": "09_proud",
+        "error": "07_angry",
+        "meeting": "01_salute"
+      }
+    },
+    "hash": {
+      "name": "해시",
+      "team": "marketing",
+      "color": "#E5663B",
+      "face": "hash/face.webp",
+      "base": "11_base",
+      "states": {
+        "idle": "10_bobatea",
+        "thinking": "02_idea",
+        "research": "02_idea",
+        "typing": "06_megaphone",
+        "running": "06_megaphone",
+        "approval": "08_please",
+        "done": "09_confetti",
+        "error": "04_shocked",
+        "meeting": "03_heart"
+      }
+    },
+    "zino": {
+      "name": "지노",
+      "team": "dev",
+      "color": "#12A26A",
+      "face": "zino/face.webp",
+      "base": "11_base",
+      "states": {
+        "idle": "15_coffee",
+        "thinking": "01_coding",
+        "research": "03_analyzing",
+        "typing": "01_coding",
+        "running": "08_repair",
+        "approval": "07_skeptical",
+        "done": "09_success",
+        "error": "04_panic",
+        "meeting": "11_base"
+      }
+    },
+    "ben": {
+      "name": "벤",
+      "team": "plan-ops",
+      "color": "#3E63DD",
+      "face": "ben/face.webp",
+      "base": "11_base",
+      "states": {}
+    },
+    "muse": {
+      "name": "뮤즈",
+      "team": "marketing",
+      "color": "#E5663B",
+      "face": "muse/face.webp",
+      "base": "11_base",
+      "states": {}
+    }
+  }
+}
