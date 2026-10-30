@@ -1,13 +1,30 @@
 // IDEAPRISM Office 서버 (로컬 전용, 127.0.0.1)
 // 실행: npm run office -- --pc 회사
 import http from "node:http";
+import { createReadStream } from "node:fs";
+import { mkdir, stat } from "node:fs/promises";
+import path from "node:path";
 import { WebSocketServer, WebSocket } from "ws";
-import { ConfigStore, type ConfigName } from "./config.js";
-import { SessionStore, appendLog } from "./local.js";
+import { ConfigStore, appDir, type ConfigName } from "./config.js";
+import { SessionStore, TranscriptStore, appendLog } from "./local.js";
 import { LeaderRunner, type OfficeEvent } from "./leaderRunner.js";
 import { gitPull, gitStatus } from "./gitApi.js";
 
 const HOST = "127.0.0.1";
+const webDist = path.join(appDir, "web", "dist");
+const assetsDir = path.join(appDir, "assets");
+const MIME: Record<string, string> = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".json": "application/json; charset=utf-8",
+  ".webp": "image/webp",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+  ".ico": "image/x-icon",
+  ".woff2": "font/woff2",
+  ".map": "application/json",
+};
 
 function arg(name: string): string | undefined {
   const i = process.argv.indexOf(`--${name}`);
@@ -26,6 +43,7 @@ async function main(): Promise<void> {
 
   const sessions = new SessionStore(pc);
   await sessions.load();
+  const transcripts = new TranscriptStore();
 
   const wss = new WebSocketServer({ noServer: true });
   const broadcast = (e: OfficeEvent): void => {
@@ -38,10 +56,11 @@ async function main(): Promise<void> {
   /** 팀장 목록 동기화: 새 id는 추가, 사라진 id는 제거(실행 중이면 끝날 때까지 둔다). 기존 러너는 유지. */
   const syncRunners = (): void => {
     const ids = new Set(store.teams.leaders.map((l) => l.id));
-    for (const id of ids) if (!runners.has(id)) runners.set(id, new LeaderRunner(id, store, sessions, broadcast));
-    for (const [id, r] of runners) if (!ids.has(id) && r.status !== "running") runners.delete(id);
+    for (const id of ids) if (!runners.has(id)) runners.set(id, new LeaderRunner(id, store, sessions, transcripts, broadcast));
+    for (const [id, r] of runners) if (!ids.has(id) && !r.currentJob) runners.delete(id);
   };
   syncRunners();
+  const states = () => [...runners.values()].map((r) => r.state());
 
   const server = http.createServer(async (req, res) => {
     const url = new URL(req.url ?? "/", `http://${HOST}`);
@@ -54,15 +73,13 @@ async function main(): Promise<void> {
       let g: RegExpExecArray | null;
 
       if (req.method === "GET" && url.pathname === "/api/health") {
-        return send(200, {
-          pc,
-          root: store.config.root,
-          deadline: store.config.deadline,
-          leaders: [...runners.values()].map(snapshot),
-        });
+        return send(200, { pc, root: store.config.root, deadline: store.config.deadline, leaders: states() });
       }
-      if (req.method === "GET" && url.pathname === "/api/leaders") {
-        return send(200, [...runners.values()].map(snapshot));
+      if (req.method === "GET" && url.pathname === "/api/leaders") return send(200, states());
+      if (req.method === "GET" && (g = m(/^\/api\/leaders\/([\w-]+)\/transcript$/))) {
+        const r = runners.get(g[1]);
+        if (!r) return send(404, { error: `팀장 없음: ${g[1]}` });
+        return send(200, await r.transcript());
       }
       if (req.method === "POST" && (g = m(/^\/api\/leaders\/([\w-]+)\/instruct$/))) {
         const r = runners.get(g[1]);
@@ -84,11 +101,20 @@ async function main(): Promise<void> {
         await r.resetSession();
         return send(200, { ok: true });
       }
+      if (req.method === "POST" && url.pathname === "/api/config/mkdir") {
+        // 관리자 페이지 "폴더 만들기": 설정에 적힌 경로만 만든다 (임의 경로 금지)
+        const body = (await readJson(req)) as { key?: string };
+        const row = (await store.validate()).find((c) => c.key === body.key);
+        if (!row) return send(404, { error: `설정 항목 없음: ${body.key}` });
+        await mkdir(row.path, { recursive: true });
+        await appendLog({ type: "mkdir", key: row.key, path: row.path });
+        return send(200, { ok: true, path: row.path, checks: await store.validate() });
+      }
       if ((g = m(/^\/api\/config\/(config|teams|permissions)$/))) {
         const name = g[1] as ConfigName;
         if (req.method === "GET") return send(200, { file: store.filePath(name), data: store.get(name), checks: await store.validate() });
         if (req.method === "PUT") {
-          const running = [...runners.values()].filter((r) => r.status === "running").map((r) => r.def.name);
+          const running = [...runners.values()].filter((r) => r.currentJob).map((r) => r.def.name);
           let checks;
           try {
             checks = await store.save(name, await readJson(req));
@@ -97,6 +123,7 @@ async function main(): Promise<void> {
           }
           if (name === "teams") syncRunners();
           await appendLog({ type: "config_saved", name });
+          broadcast({ leaderId: "*", at: new Date().toISOString(), kind: "config_saved", name, leaders: states() });
           return send(200, {
             ok: true,
             checks,
@@ -110,6 +137,18 @@ async function main(): Promise<void> {
         await appendLog({ type: "git_pull", ok: r.ok });
         return send(r.ok ? 200 : 409, { ...r, status: await gitStatus(store.config.root) });
       }
+      if (url.pathname.startsWith("/api/")) return send(404, { error: "없는 경로" });
+
+      // 정적 파일: /assets/* 는 캐릭터 이미지, 나머지는 web/dist (없으면 안내)
+      if (req.method === "GET") {
+        if (url.pathname.startsWith("/assets/")) return serveFile(res, path.join(assetsDir, url.pathname.slice("/assets/".length)));
+        const rel = url.pathname === "/" ? "index.html" : url.pathname.slice(1);
+        const file = path.join(webDist, rel);
+        if (await isFile(file)) return serveFile(res, file);
+        if (await isFile(path.join(webDist, "index.html"))) return serveFile(res, path.join(webDist, "index.html"));
+        res.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
+        return res.end("web/dist 가 없습니다. IdeaPrism_office 에서 `npm run build` 를 먼저 실행하세요.");
+      }
       return send(404, { error: "없는 경로" });
     } catch (e) {
       return send(500, { error: (e as Error).message });
@@ -118,9 +157,11 @@ async function main(): Promise<void> {
 
   server.on("upgrade", (req, socket, head) => {
     if (req.url !== "/ws") return socket.destroy();
-    wss.handleUpgrade(req, socket, head, (ws) => {
+    wss.handleUpgrade(req, socket, head, async (ws) => {
       wss.emit("connection", ws, req);
-      ws.send(JSON.stringify({ kind: "hello", pc, leaders: [...runners.values()].map(snapshot) }));
+      const transcriptsById: Record<string, unknown> = {};
+      for (const r of runners.values()) transcriptsById[r.id] = await r.transcript();
+      ws.send(JSON.stringify({ kind: "hello", pc, deadline: store.config.deadline, leaders: states(), transcripts: transcriptsById }));
     });
   });
 
@@ -129,21 +170,29 @@ async function main(): Promise<void> {
   });
 }
 
-function snapshot(r: LeaderRunner) {
-  return {
-    id: r.id,
-    name: r.def.name,
-    team: r.def.team,
-    teamLabel: r.def.teamLabel,
-    color: r.def.color,
-    status: r.status,
-    cwd: r.cwd,
-    sessionId: r.sessionId ?? null,
-    currentJobId: r.currentJob?.id ?? null,
-    queued: r.queued,
-    lastTool: r.lastTool ?? null,
-    lastToolAt: r.lastToolAt ?? null,
-  };
+async function isFile(p: string): Promise<boolean> {
+  try {
+    return (await stat(p)).isFile();
+  } catch {
+    return false;
+  }
+}
+
+function serveFile(res: http.ServerResponse, file: string): void {
+  const safe = path.normalize(file);
+  if (!safe.startsWith(webDist) && !safe.startsWith(assetsDir)) {
+    res.writeHead(403);
+    res.end();
+    return;
+  }
+  const type = MIME[path.extname(safe).toLowerCase()] ?? "application/octet-stream";
+  const stream = createReadStream(safe);
+  stream.on("error", () => {
+    res.writeHead(404);
+    res.end();
+  });
+  stream.on("open", () => res.writeHead(200, { "content-type": type, "cache-control": "no-cache" }));
+  stream.pipe(res);
 }
 
 function printEvent(store: ConfigStore, e: OfficeEvent): void {
@@ -157,11 +206,16 @@ function printEvent(store: ConfigStore, e: OfficeEvent): void {
     case "result":
       return console.log(`${t} [${name}] 완료 ok=${e.ok} turns=${e.turns} cost=$${Number(e.costUsd).toFixed(3)} session=${e.sessionId}`);
     case "approval_needed":
-      return console.log(`${t} [${name}] 결재 필요(M1: 자동 반려) ${e.tool} ${e.target}`);
+      return console.log(`${t} [${name}] 결재 필요(자동 반려) ${e.tool} ${e.target}`);
+    case "state": {
+      const s = e.state as { status: string; location: string };
+      return console.log(`${t} [${name}] 상태 ${s.status} @${s.location}`);
+    }
     case "tool_result":
+    case "transcript":
       return;
     default:
-      return console.log(`${t} [${name}] ${e.kind} ${JSON.stringify({ ...e, leaderId: undefined, at: undefined, kind: undefined }).slice(0, 160)}`);
+      return console.log(`${t} [${name}] ${e.kind}`);
   }
 }
 
